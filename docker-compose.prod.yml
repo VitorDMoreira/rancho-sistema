@@ -1,0 +1,34 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: rancho
+      POSTGRES_PASSWORD: rancho123
+      POSTGRES_DB: rancho
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: ./apps/api
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://rancho:rancho123@db:5432/rancho
+      JWT_SECRET: uma-string-muito-longa-e-secreta-troque-depois
+      PORT: 3000
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+
+  web:
+    build: ./apps/web
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
