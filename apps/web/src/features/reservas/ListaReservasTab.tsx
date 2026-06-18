@@ -63,7 +63,7 @@ export function ListaReservasTab({ onEditar: _onEditar }: { onEditar: () => void
   const valorTotal = diarias > 0 && form.valorNegociado > 0 ? diarias * form.valorNegociado : 0;
   const valorEntrada = valorTotal > 0 ? (valorTotal * form.percentualEntrada) / 100 : 0;
   const valorRestante = valorTotal - valorEntrada;
-  const _valorParcelaPadrao = form.numParcelas > 0 ? valorRestante / form.numParcelas : valorRestante;
+  void (form.numParcelas > 0 ? valorRestante / form.numParcelas : valorRestante);
 
   function abrirEdicao(r: Reserva) {
     setEditandoId(r.id);
