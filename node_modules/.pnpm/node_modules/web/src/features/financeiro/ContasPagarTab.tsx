@@ -252,7 +252,7 @@ export function ContasPagarTab() {
   const [contaPagando, setContaPagando] = useState<any | null>(null);
 
   const { data: todasContas, isLoading } = useContasPagar();
-  const { data: resumo } = useResumoPagar();
+  useResumoPagar();
   const { data: categorias } = useCategorias();
   const { data: ranchos = [] } = useRanchos();
   const { data: fornecedores = [] } = useFornecedores();

@@ -496,7 +496,7 @@ export function ContasReceberTab() {
                     {recebido && (
                       <div className="text-xs text-gray-500 space-y-0.5">
                         <div>{c.dataPagamento ? `Pago ${fmtData(c.dataPagamento)}` : 'Pago'}</div>
-                        {c.contaBancaria && <div className="text-gray-400">{c.contaBancaria.nome}</div>}
+                        {(c as any).contaBancaria && <div className="text-gray-400">{(c as any).contaBancaria.nome}</div>}
                       </div>
                     )}
                   </td>

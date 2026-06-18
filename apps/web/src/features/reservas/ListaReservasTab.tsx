@@ -37,7 +37,7 @@ const camposVazios = {
   formaPagamento: '', observacoes: '',
 };
 
-export function ListaReservasTab({ onEditar }: { onEditar: () => void }) {
+export function ListaReservasTab({ onEditar: _onEditar }: { onEditar: () => void }) {
   const { data: reservas, isLoading } = useReservas();
   const { data: clientes } = useClientes();
   const { data: ranchos } = useRanchos();
@@ -52,7 +52,7 @@ export function ListaReservasTab({ onEditar }: { onEditar: () => void }) {
   const [dataEntradaConfirm, setDataEntradaConfirm] = useState('');
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(camposVazios);
-  const [parcelas, setParcelas] = useState<Parcela[]>([]);
+  const [_parcelas, setParcelas] = useState<Parcela[]>([]);
 
   const diarias = (() => {
     if (!form.dataEntrada || !form.dataSaida) return 0;
@@ -63,7 +63,7 @@ export function ListaReservasTab({ onEditar }: { onEditar: () => void }) {
   const valorTotal = diarias > 0 && form.valorNegociado > 0 ? diarias * form.valorNegociado : 0;
   const valorEntrada = valorTotal > 0 ? (valorTotal * form.percentualEntrada) / 100 : 0;
   const valorRestante = valorTotal - valorEntrada;
-  const valorParcelaPadrao = form.numParcelas > 0 ? valorRestante / form.numParcelas : valorRestante;
+  const _valorParcelaPadrao = form.numParcelas > 0 ? valorRestante / form.numParcelas : valorRestante;
 
   function abrirEdicao(r: Reserva) {
     setEditandoId(r.id);
