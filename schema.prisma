@@ -1,0 +1,327 @@
+// ============================================================================
+//  Sistema de Locação de Ranchos / Pousadas / Imóveis de Temporada
+//  Schema Prisma — PostgreSQL
+//  Gerar client:   npx prisma generate
+//  Criar tabelas:  npx prisma migrate dev --name init
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------- ENUMS ---------------------------------------
+
+enum PerfilUsuario {
+  ADMIN       // acesso total
+  FINANCEIRO  // acesso apenas ao módulo financeiro
+  ATENDENTE   // acesso a clientes e reservas
+}
+
+enum EstadoCivil {
+  SOLTEIRO
+  CASADO
+  DIVORCIADO
+  VIUVO
+  UNIAO_ESTAVEL
+}
+
+enum StatusRancho {
+  DISPONIVEL
+  RESERVADO
+  MANUTENCAO
+  BLOQUEADO
+}
+
+enum StatusReserva {
+  ORCAMENTO
+  AGUARDANDO_SINAL
+  CONFIRMADA
+  EM_ANDAMENTO
+  FINALIZADA
+  CANCELADA
+}
+
+enum FormaPagamento {
+  DINHEIRO
+  PIX
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+  TRANSFERENCIA
+  BOLETO
+}
+
+enum StatusContrato {
+  RASCUNHO
+  GERADO
+  ASSINADO
+  CANCELADO
+}
+
+enum TipoReceber {
+  SINAL
+  PARCELA
+  PAGAMENTO_FINAL
+  CAUCAO
+  OUTRO
+}
+
+enum StatusReceber {
+  EM_ABERTO
+  RECEBIDO
+  ATRASADO
+  CANCELADO
+}
+
+enum StatusPagar {
+  EM_ABERTO
+  PAGO
+  ATRASADO
+}
+
+enum TipoBloqueio {
+  MANUTENCAO
+  BLOQUEADO
+}
+
+enum TipoChecklist {
+  ENTRADA
+  SAIDA
+}
+
+// ----------------------------- MODELS --------------------------------------
+
+model Usuario {
+  id           String        @id @default(uuid())
+  nome         String
+  email        String        @unique
+  senhaHash    String        @map("senha_hash")
+  perfil       PerfilUsuario @default(ATENDENTE)
+  ativo        Boolean       @default(true)
+  ultimoAcesso DateTime?     @map("ultimo_acesso")
+  criadoEm     DateTime      @default(now()) @map("criado_em")
+  atualizadoEm DateTime      @updatedAt @map("atualizado_em")
+
+  logs AuditLog[]
+
+  @@map("usuarios")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  usuarioId  String?  @map("usuario_id")
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  acao       String // CREATE, UPDATE, DELETE, LOGIN
+  entidade   String // ex.: "reserva"
+  entidadeId String?  @map("entidade_id")
+  dados      Json?
+  criadoEm   DateTime @default(now()) @map("criado_em")
+
+  @@index([entidade, entidadeId])
+  @@map("audit_logs")
+}
+
+model Cliente {
+  id             String       @id @default(uuid())
+  nomeCompleto   String       @map("nome_completo")
+  cpf            String       @unique
+  rg             String?
+  dataNascimento DateTime?    @map("data_nascimento") @db.Date
+  estadoCivil    EstadoCivil? @map("estado_civil")
+  telefone       String?
+  whatsapp       String?
+  email          String?
+  cep            String?
+  rua            String?
+  numero         String?
+  bairro         String?
+  cidade         String?
+  estado         String?
+  observacoes    String?
+  criadoEm       DateTime     @default(now()) @map("criado_em")
+  atualizadoEm   DateTime     @updatedAt @map("atualizado_em")
+
+  reservas      Reserva[]
+  contasReceber ContaReceber[]
+
+  // Indicadores de histórico (qtd de locações, total gasto, última hospedagem)
+  // NÃO são colunas: são calculados via agregação sobre `reservas`.
+
+  @@map("clientes")
+}
+
+model Rancho {
+  id               String       @id @default(uuid())
+  nome             String
+  codigoInterno    String       @unique @map("codigo_interno")
+  endereco         String?
+  cidade           String?
+  estado           String?
+  capacidadeMaxima Int          @map("capacidade_maxima")
+  qtdQuartos       Int          @default(0) @map("qtd_quartos")
+  qtdBanheiros     Int          @default(0) @map("qtd_banheiros")
+  valorDiaria      Decimal      @map("valor_diaria") @db.Decimal(10, 2)
+  valorFimSemana   Decimal?     @map("valor_fim_semana") @db.Decimal(10, 2)
+  valorFeriado     Decimal?     @map("valor_feriado") @db.Decimal(10, 2)
+  status           StatusRancho @default(DISPONIVEL)
+  observacoes      String?
+  criadoEm         DateTime     @default(now()) @map("criado_em")
+  atualizadoEm     DateTime     @updatedAt @map("atualizado_em")
+
+  fotos       RanchoFoto[]
+  reservas    Reserva[]
+  bloqueios   Bloqueio[]
+  contasPagar ContaPagar[]
+
+  @@map("ranchos")
+}
+
+model RanchoFoto {
+  id        String  @id @default(uuid())
+  ranchoId  String  @map("rancho_id")
+  rancho    Rancho  @relation(fields: [ranchoId], references: [id], onDelete: Cascade)
+  url       String
+  ordem     Int     @default(0)
+  descricao String?
+
+  @@map("rancho_fotos")
+}
+
+model Bloqueio {
+  id         String       @id @default(uuid())
+  ranchoId   String       @map("rancho_id")
+  rancho     Rancho       @relation(fields: [ranchoId], references: [id], onDelete: Cascade)
+  dataInicio DateTime     @map("data_inicio") @db.Date
+  dataFim    DateTime     @map("data_fim") @db.Date
+  tipo       TipoBloqueio
+  motivo     String?
+  criadoEm   DateTime     @default(now()) @map("criado_em")
+
+  @@map("bloqueios")
+}
+
+model Reserva {
+  id              String          @id @default(uuid())
+  clienteId       String          @map("cliente_id")
+  cliente         Cliente         @relation(fields: [clienteId], references: [id])
+  ranchoId        String          @map("rancho_id")
+  rancho          Rancho          @relation(fields: [ranchoId], references: [id])
+  dataEntrada     DateTime        @map("data_entrada") @db.Date
+  dataSaida       DateTime        @map("data_saida") @db.Date
+  qtdHospedes     Int             @map("qtd_hospedes")
+  numDiarias      Int             @map("num_diarias") // calculado no service
+  valorNegociado  Decimal         @map("valor_negociado") @db.Decimal(10, 2)
+  valorTotal      Decimal         @map("valor_total") @db.Decimal(10, 2) // calculado
+  sinalRecebido   Decimal         @default(0) @map("sinal_recebido") @db.Decimal(10, 2)
+  // saldoRestante = valorTotal - sinalRecebido (calculado, não armazenado)
+  caucaoValor     Decimal?        @map("caucao_valor") @db.Decimal(10, 2)
+  caucaoDevolvida Boolean         @default(false) @map("caucao_devolvida")
+  formaPagamento  FormaPagamento? @map("forma_pagamento")
+  status          StatusReserva   @default(ORCAMENTO)
+  observacoes     String?
+  criadoEm        DateTime        @default(now()) @map("criado_em")
+  atualizadoEm    DateTime        @updatedAt @map("atualizado_em")
+
+  contrato      Contrato?
+  contasReceber ContaReceber[]
+  checklists    Checklist[]
+
+  @@index([ranchoId, dataEntrada, dataSaida])
+  @@index([status])
+  @@map("reservas")
+}
+
+model Contrato {
+  id         String         @id @default(uuid())
+  reservaId  String         @unique @map("reserva_id")
+  reserva    Reserva        @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  numero     String         @unique
+  pdfUrl     String?        @map("pdf_url")
+  status     StatusContrato @default(RASCUNHO)
+  assinadoEm DateTime?      @map("assinado_em")
+  providerId String?        @map("provider_id") // id da assinatura no provedor externo
+  criadoEm   DateTime       @default(now()) @map("criado_em")
+
+  @@map("contratos")
+}
+
+model ContaReceber {
+  id             String          @id @default(uuid())
+  reservaId      String?         @map("reserva_id")
+  reserva        Reserva?        @relation(fields: [reservaId], references: [id], onDelete: SetNull)
+  clienteId      String          @map("cliente_id")
+  cliente        Cliente         @relation(fields: [clienteId], references: [id])
+  descricao      String
+  tipo           TipoReceber     @default(PARCELA)
+  valor          Decimal         @db.Decimal(10, 2)
+  vencimento     DateTime        @db.Date
+  dataPagamento  DateTime?       @map("data_pagamento") @db.Date
+  formaPagamento FormaPagamento? @map("forma_pagamento")
+  status         StatusReceber   @default(EM_ABERTO)
+  criadoEm       DateTime        @default(now()) @map("criado_em")
+  atualizadoEm   DateTime        @updatedAt @map("atualizado_em")
+
+  @@index([status, vencimento])
+  @@map("contas_receber")
+}
+
+model CategoriaDespesa {
+  id    String  @id @default(uuid())
+  nome  String  @unique // Energia, Água, Internet, Funcionários, Limpeza, Manutenção, Impostos, Outros
+  ativo Boolean @default(true)
+
+  contasPagar ContaPagar[]
+
+  @@map("categorias_despesa")
+}
+
+model Fornecedor {
+  id          String  @id @default(uuid())
+  nome        String
+  documento   String?
+  contato     String?
+  observacoes String?
+
+  contasPagar ContaPagar[]
+
+  @@map("fornecedores")
+}
+
+model ContaPagar {
+  id            String           @id @default(uuid())
+  fornecedorId  String?          @map("fornecedor_id")
+  fornecedor    Fornecedor?      @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
+  categoriaId   String           @map("categoria_id")
+  categoria     CategoriaDespesa @relation(fields: [categoriaId], references: [id])
+  ranchoId      String?          @map("rancho_id") // rateio opcional por imóvel
+  rancho        Rancho?          @relation(fields: [ranchoId], references: [id], onDelete: SetNull)
+  descricao     String
+  valor         Decimal          @db.Decimal(10, 2)
+  vencimento    DateTime         @db.Date
+  dataPagamento DateTime?        @map("data_pagamento") @db.Date
+  status        StatusPagar      @default(EM_ABERTO)
+  observacoes   String?
+  criadoEm      DateTime         @default(now()) @map("criado_em")
+  atualizadoEm  DateTime         @updatedAt @map("atualizado_em")
+
+  @@index([status, vencimento])
+  @@map("contas_pagar")
+}
+
+model Checklist {
+  id           String        @id @default(uuid())
+  reservaId    String        @map("reserva_id")
+  reserva      Reserva       @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  tipo         TipoChecklist
+  itens        Json // [{ "item": "Chaves", "ok": true, "obs": "" }, ...]
+  realizadoPor String?       @map("realizado_por")
+  realizadoEm  DateTime?     @map("realizado_em")
+  observacoes  String?
+  criadoEm     DateTime      @default(now()) @map("criado_em")
+
+  @@map("checklists")
+}

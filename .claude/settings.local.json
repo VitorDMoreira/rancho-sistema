@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\\\Users\\\\vitor\\\\Desktop\\\\Rancho - Sistema\\\\apps\\\\api\\\\src\\\\generated\\\\prisma\" /b)",
+      "Bash(npx prisma *)",
+      "Bash(dir \"C:\\\\Users\\\\vitor\\\\Desktop\\\\Rancho - Sistema\\\\apps\\\\web\\\\src\\\\features\" /b /s)",
+      "Bash(npx tsc *)",
+      "Bash(xargs grep -l \"Categoria\")",
+      "Bash(docker compose *)",
+      "Bash(mkdir -p \"/c/Users/vitor/Desktop/Marina - Sistema\")",
+      "Read(//c/c/Users/vitor/Desktop/Rancho - Sistema/**)",
+      "Bash(cat .env)",
+      "Bash(cat apps/api/.env)",
+      "Bash(xargs -I{} sh -c 'echo ---{}---; cat {}')",
+      "Bash(cd \"/c/Users/vitor/Desktop/Marina - Sistema\" && mv schema.prisma apps/api/prisma/schema.prisma)",
+      "Bash(pnpm install *)",
+      "Bash(npx ts-node *)",
+      "Bash(pnpm dev:api)",
+      "Read(//tmp/**)",
+      "Bash(curl -s http://localhost:3001)",
+      "Bash(curl -s -X POST http://localhost:3001/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@marina.com\",\"senha\":\"admin123\"}')",
+      "Bash(pnpm dev:web)"
+    ]
+  }
+}
